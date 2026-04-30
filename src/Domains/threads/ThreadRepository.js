@@ -6,6 +6,10 @@ class ThreadRepository {
   async checkAvailabilityThread(_threadId) {
     throw new Error('THREAD_REPOSITORY.METHOD_NOT_IMPLEMENTED');
   }
+
+  async getThreadById(_threadId) {
+    throw new Error('THREAD_REPOSITORY.METHOD_NOT_IMPLEMENTED');
+  }
 }
 
 export default ThreadRepository;

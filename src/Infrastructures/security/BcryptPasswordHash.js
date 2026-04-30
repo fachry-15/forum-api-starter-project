@@ -19,6 +19,10 @@ class BcryptPasswordHash extends PasswordHash {
       throw new AuthenticationError('kredensial yang Anda masukkan salah');
     }
   }
+
+  async compare(password, hashedPassword) {
+    return this.comparePassword(password, hashedPassword);
+  }
 }
 
 export default BcryptPasswordHash;

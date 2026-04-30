@@ -2,6 +2,8 @@ import request from 'supertest';
 import pool from '../../database/postgres/pool.js';
 import UsersTableTestHelper from '../../../../tests/UsersTableTestHelper.js';
 import AuthenticationsTableTestHelper from '../../../../tests/AuthenticationsTableTestHelper.js';
+import ThreadsTableTestHelper from '../../../../tests/ThreadsTableTestHelper.js';
+import CommentsTableTestHelper from '../../../../tests/CommentsTableTestHelper.js';
 import container from '../../container.js';
 import createServer from '../createServer.js';
 import AuthenticationTokenManager from '../../../Applications/security/AuthenticationTokenManager.js';
@@ -12,6 +14,8 @@ describe('HTTP server', () => {
   });
 
   afterEach(async () => {
+    await CommentsTableTestHelper.cleanTable();
+    await ThreadsTableTestHelper.cleanTable();
     await UsersTableTestHelper.cleanTable();
     await AuthenticationsTableTestHelper.cleanTable();
   });
@@ -336,5 +340,475 @@ describe('HTTP server', () => {
     expect(response.status).toEqual(500);
     expect(response.body.status).toEqual('error');
     expect(response.body.message).toEqual('terjadi kegagalan pada server kami');
+  });
+
+  describe('when DELETE /threads/{threadId}/comments/{commentId}', () => {
+    it('should response 200 when comment is deleted successfully', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      // Register user
+      await request(app).post('/users').send({
+        username: 'dicoding',
+        password: 'secret',
+        fullname: 'Dicoding Indonesia',
+      });
+
+      // Login
+      const loginResponse = await request(app).post('/authentications').send({
+        username: 'dicoding',
+        password: 'secret',
+      });
+      const { accessToken } = loginResponse.body.data;
+
+      // Create thread
+      const threadResponse = await request(app)
+        .post('/threads')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ title: 'sebuah thread', body: 'sebuah body thread' });
+      const { id: threadId } = threadResponse.body.data.addedThread;
+
+      // Add comment
+      const commentResponse = await request(app)
+        .post(`/threads/${threadId}/comments`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'sebuah komentar' });
+      const { id: commentId } = commentResponse.body.data.addedComment;
+
+      // Action
+      const response = await request(app)
+        .delete(`/threads/${threadId}/comments/${commentId}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      // Assert
+      expect(response.status).toEqual(200);
+      expect(response.body.status).toEqual('success');
+    });
+
+    it('should response 401 when request does not have access token', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      // Action
+      const response = await request(app)
+        .delete('/threads/thread-123/comments/comment-123');
+
+      // Assert
+      expect(response.status).toEqual(401);
+      expect(response.body.status).toEqual('fail');
+    });
+
+    it('should response 403 when user is not the comment owner', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      // Register first user (owner)
+      await request(app).post('/users').send({
+        username: 'dicoding',
+        password: 'secret',
+        fullname: 'Dicoding Indonesia',
+      });
+
+      // Register second user (other)
+      await request(app).post('/users').send({
+        username: 'other_user',
+        password: 'secret',
+        fullname: 'Other User',
+      });
+
+      // Login as owner
+      const ownerLoginResponse = await request(app).post('/authentications').send({
+        username: 'dicoding',
+        password: 'secret',
+      });
+      const ownerToken = ownerLoginResponse.body.data.accessToken;
+
+      // Login as other user
+      const otherLoginResponse = await request(app).post('/authentications').send({
+        username: 'other_user',
+        password: 'secret',
+      });
+      const otherToken = otherLoginResponse.body.data.accessToken;
+
+      // Create thread as owner
+      const threadResponse = await request(app)
+        .post('/threads')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ title: 'sebuah thread', body: 'sebuah body thread' });
+      const { id: threadId } = threadResponse.body.data.addedThread;
+
+      // Add comment as owner
+      const commentResponse = await request(app)
+        .post(`/threads/${threadId}/comments`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ content: 'sebuah komentar' });
+      const { id: commentId } = commentResponse.body.data.addedComment;
+
+      // Action: try to delete comment as other user
+      const response = await request(app)
+        .delete(`/threads/${threadId}/comments/${commentId}`)
+        .set('Authorization', `Bearer ${otherToken}`);
+
+      // Assert
+      expect(response.status).toEqual(403);
+      expect(response.body.status).toEqual('fail');
+      expect(response.body.message).toBeDefined();
+    });
+
+    it('should response 404 when thread does not exist', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      // Register & login
+      await request(app).post('/users').send({
+        username: 'dicoding',
+        password: 'secret',
+        fullname: 'Dicoding Indonesia',
+      });
+      const loginResponse = await request(app).post('/authentications').send({
+        username: 'dicoding',
+        password: 'secret',
+      });
+      const { accessToken } = loginResponse.body.data;
+
+      // Action
+      const response = await request(app)
+        .delete('/threads/thread-not-exist/comments/comment-123')
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      // Assert
+      expect(response.status).toEqual(404);
+      expect(response.body.status).toEqual('fail');
+      expect(response.body.message).toBeDefined();
+    });
+
+    it('should response 404 when comment does not exist', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      // Register & login
+      await request(app).post('/users').send({
+        username: 'dicoding',
+        password: 'secret',
+        fullname: 'Dicoding Indonesia',
+      });
+      const loginResponse = await request(app).post('/authentications').send({
+        username: 'dicoding',
+        password: 'secret',
+      });
+      const { accessToken } = loginResponse.body.data;
+
+      // Create thread
+      const threadResponse = await request(app)
+        .post('/threads')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ title: 'sebuah thread', body: 'sebuah body thread' });
+      const { id: threadId } = threadResponse.body.data.addedThread;
+
+      // Action
+      const response = await request(app)
+        .delete(`/threads/${threadId}/comments/comment-not-exist`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      // Assert
+      expect(response.status).toEqual(404);
+      expect(response.body.status).toEqual('fail');
+      expect(response.body.message).toBeDefined();
+    });
+  });
+
+  describe('when GET /threads/:threadId', () => {
+    it('should response 200 with thread detail and comments', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      // Register user
+      await request(app).post('/users').send({
+        username: 'dicoding',
+        password: 'secret',
+        fullname: 'Dicoding Indonesia',
+      });
+
+      // Login
+      const loginResponse = await request(app).post('/authentications').send({
+        username: 'dicoding',
+        password: 'secret',
+      });
+      const { accessToken } = loginResponse.body.data;
+
+      // Create thread
+      const threadResponse = await request(app)
+        .post('/threads')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ title: 'sebuah thread', body: 'sebuah body thread' });
+      const { id: threadId } = threadResponse.body.data.addedThread;
+
+      // Add a comment
+      const commentResponse = await request(app)
+        .post(`/threads/${threadId}/comments`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'sebuah komentar' });
+      const { id: commentId } = commentResponse.body.data.addedComment;
+
+      // Delete the comment (soft delete)
+      await request(app)
+        .delete(`/threads/${threadId}/comments/${commentId}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      // Action: get thread detail (no auth needed)
+      const response = await request(app).get(`/threads/${threadId}`);
+
+      // Assert
+      expect(response.status).toEqual(200);
+      expect(response.body.status).toEqual('success');
+      expect(response.body.data.thread).toBeDefined();
+      expect(response.body.data.thread.id).toEqual(threadId);
+      expect(response.body.data.thread.username).toEqual('dicoding');
+      expect(response.body.data.thread.comments).toHaveLength(1);
+      expect(response.body.data.thread.comments[0].content).toEqual('**komentar telah dihapus**');
+    });
+
+    it('should response 404 when thread does not exist', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      // Action
+      const response = await request(app).get('/threads/thread-not-exist');
+
+      // Assert
+      expect(response.status).toEqual(404);
+      expect(response.body.status).toEqual('fail');
+      expect(response.body.message).toBeDefined();
+    });
+  });
+
+  describe('when POST /threads/:threadId/comments/:commentId/replies', () => {
+    it('should response 201 and return addedReply', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      await request(app).post('/users').send({
+        username: 'dicoding', password: 'secret', fullname: 'Dicoding Indonesia',
+      });
+      const loginResponse = await request(app).post('/authentications').send({
+        username: 'dicoding', password: 'secret',
+      });
+      const { accessToken } = loginResponse.body.data;
+
+      const threadResponse = await request(app)
+        .post('/threads')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ title: 'sebuah thread', body: 'sebuah body thread' });
+      const { id: threadId } = threadResponse.body.data.addedThread;
+
+      const commentResponse = await request(app)
+        .post(`/threads/${threadId}/comments`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'sebuah komentar' });
+      const { id: commentId } = commentResponse.body.data.addedComment;
+
+      // Action
+      const response = await request(app)
+        .post(`/threads/${threadId}/comments/${commentId}/replies`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'sebuah balasan' });
+
+      // Assert
+      expect(response.status).toEqual(201);
+      expect(response.body.status).toEqual('success');
+      expect(response.body.data.addedReply).toBeDefined();
+      expect(response.body.data.addedReply.content).toEqual('sebuah balasan');
+    });
+
+    it('should response 401 when request does not have access token', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      // Action
+      const response = await request(app)
+        .post('/threads/thread-123/comments/comment-123/replies')
+        .send({ content: 'sebuah balasan' });
+
+      // Assert
+      expect(response.status).toEqual(401);
+    });
+
+    it('should response 404 when thread does not exist', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      await request(app).post('/users').send({
+        username: 'dicoding', password: 'secret', fullname: 'Dicoding Indonesia',
+      });
+      const loginResponse = await request(app).post('/authentications').send({
+        username: 'dicoding', password: 'secret',
+      });
+      const { accessToken } = loginResponse.body.data;
+
+      // Action
+      const response = await request(app)
+        .post('/threads/thread-not-exist/comments/comment-123/replies')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'sebuah balasan' });
+
+      // Assert
+      expect(response.status).toEqual(404);
+      expect(response.body.status).toEqual('fail');
+    });
+
+    it('should response 404 when comment does not exist', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      await request(app).post('/users').send({
+        username: 'dicoding', password: 'secret', fullname: 'Dicoding Indonesia',
+      });
+      const loginResponse = await request(app).post('/authentications').send({
+        username: 'dicoding', password: 'secret',
+      });
+      const { accessToken } = loginResponse.body.data;
+
+      const threadResponse = await request(app)
+        .post('/threads')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ title: 'sebuah thread', body: 'sebuah body' });
+      const { id: threadId } = threadResponse.body.data.addedThread;
+
+      // Action
+      const response = await request(app)
+        .post(`/threads/${threadId}/comments/comment-not-exist/replies`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'sebuah balasan' });
+
+      // Assert
+      expect(response.status).toEqual(404);
+      expect(response.body.status).toEqual('fail');
+    });
+
+    it('should response 400 when content is missing', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      await request(app).post('/users').send({
+        username: 'dicoding', password: 'secret', fullname: 'Dicoding Indonesia',
+      });
+      const loginResponse = await request(app).post('/authentications').send({
+        username: 'dicoding', password: 'secret',
+      });
+      const { accessToken } = loginResponse.body.data;
+
+      const threadResponse = await request(app)
+        .post('/threads')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ title: 'sebuah thread', body: 'sebuah body' });
+      const { id: threadId } = threadResponse.body.data.addedThread;
+
+      const commentResponse = await request(app)
+        .post(`/threads/${threadId}/comments`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'sebuah komentar' });
+      const { id: commentId } = commentResponse.body.data.addedComment;
+
+      // Action
+      const response = await request(app)
+        .post(`/threads/${threadId}/comments/${commentId}/replies`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({});
+
+      // Assert
+      expect(response.status).toEqual(400);
+    });
+  });
+
+  describe('when DELETE /threads/:threadId/comments/:commentId/replies/:replyId', () => {
+    const setupUserAndThread = async (app, username = 'dicoding') => {
+      await request(app).post('/users').send({ username, password: 'secret', fullname: 'User' });
+      const loginRes = await request(app).post('/authentications').send({ username, password: 'secret' });
+      const { accessToken } = loginRes.body.data;
+      const threadRes = await request(app)
+        .post('/threads').set('Authorization', `Bearer ${accessToken}`)
+        .send({ title: 'thread', body: 'body' });
+      const { id: threadId } = threadRes.body.data.addedThread;
+      const commentRes = await request(app)
+        .post(`/threads/${threadId}/comments`).set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'komentar' });
+      const { id: commentId } = commentRes.body.data.addedComment;
+      return { accessToken, threadId, commentId };
+    };
+
+    it('should response 200 when reply is deleted successfully', async () => {
+      // Arrange
+      const app = await createServer(container);
+      const { accessToken, threadId, commentId } = await setupUserAndThread(app);
+
+      const replyRes = await request(app)
+        .post(`/threads/${threadId}/comments/${commentId}/replies`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'sebuah balasan' });
+      const { id: replyId } = replyRes.body.data.addedReply;
+
+      // Action
+      const response = await request(app)
+        .delete(`/threads/${threadId}/comments/${commentId}/replies/${replyId}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      // Assert
+      expect(response.status).toEqual(200);
+      expect(response.body.status).toEqual('success');
+    });
+
+    it('should response 401 when request does not have access token', async () => {
+      // Arrange
+      const app = await createServer(container);
+
+      // Action
+      const response = await request(app)
+        .delete('/threads/thread-123/comments/comment-123/replies/reply-123');
+
+      // Assert
+      expect(response.status).toEqual(401);
+    });
+
+    it('should response 403 when user is not the reply owner', async () => {
+      // Arrange
+      const app = await createServer(container);
+      const { accessToken, threadId, commentId } = await setupUserAndThread(app);
+
+      // Add reply as owner
+      const replyRes = await request(app)
+        .post(`/threads/${threadId}/comments/${commentId}/replies`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ content: 'sebuah balasan' });
+      const { id: replyId } = replyRes.body.data.addedReply;
+
+      // Register & login as another user
+      await request(app).post('/users').send({ username: 'johndoe', password: 'secret', fullname: 'John' });
+      const otherLogin = await request(app).post('/authentications').send({ username: 'johndoe', password: 'secret' });
+      const otherToken = otherLogin.body.data.accessToken;
+
+      // Action: try to delete with non-owner
+      const response = await request(app)
+        .delete(`/threads/${threadId}/comments/${commentId}/replies/${replyId}`)
+        .set('Authorization', `Bearer ${otherToken}`);
+
+      // Assert
+      expect(response.status).toEqual(403);
+      expect(response.body.status).toEqual('fail');
+    });
+
+    it('should response 404 when reply does not exist', async () => {
+      // Arrange
+      const app = await createServer(container);
+      const { accessToken, threadId, commentId } = await setupUserAndThread(app);
+
+      // Action
+      const response = await request(app)
+        .delete(`/threads/${threadId}/comments/${commentId}/replies/reply-not-exist`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      // Assert
+      expect(response.status).toEqual(404);
+      expect(response.body.status).toEqual('fail');
+    });
   });
 });
