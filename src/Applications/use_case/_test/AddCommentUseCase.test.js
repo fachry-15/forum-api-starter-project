@@ -15,7 +15,15 @@ describe('AddCommentUseCase', () => {
       owner: 'user-123',
     };
 
-    const mockAddedComment = new AddedComment({
+    // Nilai kembalian mock dibuat sebagai objek mentah yang berbeda dari expected value,
+    // sehingga kita bisa memastikan use case benar-benar meneruskan hasil dari dependensi.
+    const mockRepositoryResult = {
+      id: 'comment-123',
+      content: useCasePayload.content,
+      owner: useCasePayload.owner,
+    };
+
+    const expectedAddedComment = new AddedComment({
       id: 'comment-123',
       content: useCasePayload.content,
       owner: useCasePayload.owner,
@@ -25,7 +33,7 @@ describe('AddCommentUseCase', () => {
     const mockThreadRepository = new ThreadRepository();
 
     mockThreadRepository.checkAvailabilityThread = vi.fn().mockResolvedValue(undefined);
-    mockCommentRepository.addComment = vi.fn().mockResolvedValue(mockAddedComment);
+    mockCommentRepository.addComment = vi.fn().mockResolvedValue(mockRepositoryResult);
 
     const addCommentUseCase = new AddCommentUseCase({
       commentRepository: mockCommentRepository,
@@ -36,7 +44,7 @@ describe('AddCommentUseCase', () => {
     const addedComment = await addCommentUseCase.execute(useCasePayload);
 
     // Assert
-    expect(addedComment).toStrictEqual(mockAddedComment);
+    expect(addedComment).toStrictEqual(expectedAddedComment);
     expect(mockThreadRepository.checkAvailabilityThread).toHaveBeenCalledWith(useCasePayload.threadId);
     expect(mockCommentRepository.addComment).toHaveBeenCalledWith(new NewComment(useCasePayload));
   });

@@ -13,10 +13,16 @@ describe('GetAuthenticationUseCase', () => {
       username: 'dicoding',
       password: 'secret',
     };
-    const mockedAuthentication = new NewAuth({
-      accessToken: 'access_token',
-      refreshToken: 'refresh_token',
+    // Nilai kembalian mock dibuat sebagai string mentah yang berbeda dari expected value,
+    // sehingga kita bisa memastikan use case benar-benar memproses hasil dari dependensi.
+    const mockAccessToken = 'access_token';
+    const mockRefreshToken = 'refresh_token';
+
+    const expectedAuthentication = new NewAuth({
+      accessToken: mockAccessToken,
+      refreshToken: mockRefreshToken,
     });
+
     const mockUserRepository = new UserRepository();
     const mockAuthenticationRepository = new AuthenticationRepository();
     const mockAuthenticationTokenManager = new AuthenticationTokenManager();
@@ -28,9 +34,9 @@ describe('GetAuthenticationUseCase', () => {
     mockPasswordHash.comparePassword = vi.fn()
       .mockImplementation(() => Promise.resolve());
     mockAuthenticationTokenManager.createAccessToken = vi.fn()
-      .mockImplementation(() => Promise.resolve(mockedAuthentication.accessToken));
+      .mockImplementation(() => Promise.resolve(mockAccessToken));
     mockAuthenticationTokenManager.createRefreshToken = vi.fn()
-      .mockImplementation(() => Promise.resolve(mockedAuthentication.refreshToken));
+      .mockImplementation(() => Promise.resolve(mockRefreshToken));
     mockUserRepository.getIdByUsername = vi.fn()
       .mockImplementation(() => Promise.resolve('user-123'));
     mockAuthenticationRepository.addToken = vi.fn()
@@ -48,10 +54,7 @@ describe('GetAuthenticationUseCase', () => {
     const actualAuthentication = await loginUserUseCase.execute(useCasePayload);
 
     // Assert
-    expect(actualAuthentication).toEqual(new NewAuth({
-      accessToken: 'access_token',
-      refreshToken: 'refresh_token',
-    }));
+    expect(actualAuthentication).toEqual(expectedAuthentication);
     expect(mockUserRepository.getPasswordByUsername)
       .toBeCalledWith('dicoding');
     expect(mockPasswordHash.comparePassword)
@@ -63,6 +66,6 @@ describe('GetAuthenticationUseCase', () => {
     expect(mockAuthenticationTokenManager.createRefreshToken)
       .toBeCalledWith({ username: 'dicoding', id: 'user-123' });
     expect(mockAuthenticationRepository.addToken)
-      .toBeCalledWith(mockedAuthentication.refreshToken);
+      .toBeCalledWith(mockRefreshToken);
   });
 });

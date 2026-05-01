@@ -13,14 +13,22 @@ describe('AddThreadUseCase', () => {
       owner: 'user-123',
     };
 
-    const mockAddedThread = new AddedThread({
+    // Nilai kembalian mock dibuat sebagai objek mentah yang berbeda dari expected value,
+    // sehingga kita bisa memastikan use case benar-benar memproses hasil dari dependensi.
+    const mockRepositoryResult = {
+      id: 'thread-123',
+      title: useCasePayload.title,
+      owner: useCasePayload.owner,
+    };
+
+    const expectedAddedThread = new AddedThread({
       id: 'thread-123',
       title: useCasePayload.title,
       owner: useCasePayload.owner,
     });
 
     const mockThreadRepository = new ThreadRepository();
-    mockThreadRepository.addThread = vi.fn().mockResolvedValue(mockAddedThread);
+    mockThreadRepository.addThread = vi.fn().mockResolvedValue(mockRepositoryResult);
 
     const addThreadUseCase = new AddThreadUseCase({ threadRepository: mockThreadRepository });
 
@@ -28,7 +36,7 @@ describe('AddThreadUseCase', () => {
     const addedThread = await addThreadUseCase.execute(useCasePayload);
 
     // Assert
-    expect(addedThread).toStrictEqual(mockAddedThread);
+    expect(addedThread).toStrictEqual(expectedAddedThread);
     expect(mockThreadRepository.addThread).toHaveBeenCalledWith(new NewThread(useCasePayload));
   });
 });

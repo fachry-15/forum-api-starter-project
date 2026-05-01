@@ -130,6 +130,7 @@ describe('GetThreadDetailUseCase', () => {
 
     // Action & Assert
     await expect(getThreadDetailUseCase.execute('thread-not-found')).rejects.toThrow(NotFoundError);
+    expect(mockThreadRepository.getThreadById).toHaveBeenCalledWith('thread-not-found');
   });
 
   it('should return thread with empty comments and replies when none exist', async () => {
@@ -160,6 +161,16 @@ describe('GetThreadDetailUseCase', () => {
     const threadDetail = await getThreadDetailUseCase.execute('thread-123');
 
     // Assert
-    expect(threadDetail.comments).toEqual([]);
+    expect(mockThreadRepository.getThreadById).toHaveBeenCalledWith('thread-123');
+    expect(mockCommentRepository.getCommentsByThreadId).toHaveBeenCalledWith('thread-123');
+    expect(mockReplyRepository.getRepliesByThreadId).toHaveBeenCalledWith('thread-123');
+    expect(threadDetail).toEqual({
+      id: 'thread-123',
+      title: 'sebuah thread',
+      body: 'sebuah body thread',
+      date: '2021-08-08T07:19:09.775Z',
+      username: 'dicoding',
+      comments: [],
+    });
   });
 });

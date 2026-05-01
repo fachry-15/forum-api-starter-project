@@ -6,19 +6,13 @@ import AddReplyUseCase from '../../../../Applications/use_case/AddReplyUseCase.j
 import DeleteReplyUseCase from '../../../../Applications/use_case/DeleteReplyUseCase.js';
 import AuthenticationError from '../../../../Commons/exceptions/AuthenticationError.js';
 
-class ThreadsHandler {
+class PostThreadHandler {
   constructor(container) {
     this._container = container;
-
-    this.postThreadHandler = this.postThreadHandler.bind(this);
-    this.postCommentHandler = this.postCommentHandler.bind(this);
-    this.deleteCommentHandler = this.deleteCommentHandler.bind(this);
-    this.getThreadDetailHandler = this.getThreadDetailHandler.bind(this);
-    this.postReplyHandler = this.postReplyHandler.bind(this);
-    this.deleteReplyHandler = this.deleteReplyHandler.bind(this);
+    this.handle = this.handle.bind(this);
   }
 
-  async postThreadHandler(req, res, next) {
+  async handle(req, res, next) {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -34,26 +28,29 @@ class ThreadsHandler {
 
       const addThreadUseCase = this._container.getInstance(AddThreadUseCase.name);
 
-      const useCasePayload = {
+      const addedThread = await addThreadUseCase.execute({
         title: req.body.title,
         body: req.body.body,
         owner,
-      };
-
-      const addedThread = await addThreadUseCase.execute(useCasePayload);
+      });
 
       return res.status(201).json({
         status: 'success',
-        data: {
-          addedThread,
-        },
+        data: { addedThread },
       });
     } catch (error) {
       next(error);
     }
   }
+}
 
-  async postCommentHandler(req, res, next) {
+class PostCommentHandler {
+  constructor(container) {
+    this._container = container;
+    this.handle = this.handle.bind(this);
+  }
+
+  async handle(req, res, next) {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -70,26 +67,29 @@ class ThreadsHandler {
 
       const addCommentUseCase = this._container.getInstance(AddCommentUseCase.name);
 
-      const useCasePayload = {
+      const addedComment = await addCommentUseCase.execute({
         content: req.body.content,
         threadId,
         owner,
-      };
-
-      const addedComment = await addCommentUseCase.execute(useCasePayload);
+      });
 
       return res.status(201).json({
         status: 'success',
-        data: {
-          addedComment,
-        },
+        data: { addedComment },
       });
     } catch (error) {
       next(error);
     }
   }
+}
 
-  async deleteCommentHandler(req, res, next) {
+class DeleteCommentHandler {
+  constructor(container) {
+    this._container = container;
+    this.handle = this.handle.bind(this);
+  }
+
+  async handle(req, res, next) {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -106,23 +106,22 @@ class ThreadsHandler {
 
       const deleteCommentUseCase = this._container.getInstance(DeleteCommentUseCase.name);
 
-      const useCasePayload = {
-        threadId,
-        commentId,
-        owner,
-      };
+      await deleteCommentUseCase.execute({ threadId, commentId, owner });
 
-      await deleteCommentUseCase.execute(useCasePayload);
-
-      return res.status(200).json({
-        status: 'success',
-      });
+      return res.status(200).json({ status: 'success' });
     } catch (error) {
       next(error);
     }
   }
+}
 
-  async getThreadDetailHandler(req, res, next) {
+class GetThreadDetailHandler {
+  constructor(container) {
+    this._container = container;
+    this.handle = this.handle.bind(this);
+  }
+
+  async handle(req, res, next) {
     try {
       const { threadId } = req.params;
 
@@ -131,16 +130,21 @@ class ThreadsHandler {
 
       return res.status(200).json({
         status: 'success',
-        data: {
-          thread,
-        },
+        data: { thread },
       });
     } catch (error) {
       next(error);
     }
   }
+}
 
-  async postReplyHandler(req, res, next) {
+class PostReplyHandler {
+  constructor(container) {
+    this._container = container;
+    this.handle = this.handle.bind(this);
+  }
+
+  async handle(req, res, next) {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -157,27 +161,30 @@ class ThreadsHandler {
 
       const addReplyUseCase = this._container.getInstance(AddReplyUseCase.name);
 
-      const useCasePayload = {
+      const addedReply = await addReplyUseCase.execute({
         content: req.body.content,
         commentId,
         threadId,
         owner,
-      };
-
-      const addedReply = await addReplyUseCase.execute(useCasePayload);
+      });
 
       return res.status(201).json({
         status: 'success',
-        data: {
-          addedReply,
-        },
+        data: { addedReply },
       });
     } catch (error) {
       next(error);
     }
   }
+}
 
-  async deleteReplyHandler(req, res, next) {
+class DeleteReplyHandler {
+  constructor(container) {
+    this._container = container;
+    this.handle = this.handle.bind(this);
+  }
+
+  async handle(req, res, next) {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -201,5 +208,12 @@ class ThreadsHandler {
     }
   }
 }
-export default ThreadsHandler;
 
+export {
+  PostThreadHandler,
+  PostCommentHandler,
+  DeleteCommentHandler,
+  GetThreadDetailHandler,
+  PostReplyHandler,
+  DeleteReplyHandler,
+};

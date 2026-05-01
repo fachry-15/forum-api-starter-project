@@ -1,16 +1,22 @@
 import express from 'express';
-import ThreadsHandler from './handler.js';
+import {
+  PostThreadHandler,
+  PostCommentHandler,
+  DeleteCommentHandler,
+  GetThreadDetailHandler,
+  PostReplyHandler,
+  DeleteReplyHandler,
+} from './handler.js';
 
 const routes = (container) => {
   const router = express.Router();
-  const handler = new ThreadsHandler(container);
 
-  router.post('/', handler.postThreadHandler);
-  router.get('/:threadId', handler.getThreadDetailHandler);
-  router.post('/:threadId/comments', handler.postCommentHandler);
-  router.delete('/:threadId/comments/:commentId', handler.deleteCommentHandler);
-  router.post('/:threadId/comments/:commentId/replies', handler.postReplyHandler);
-  router.delete('/:threadId/comments/:commentId/replies/:replyId', handler.deleteReplyHandler);
+  router.post('/', new PostThreadHandler(container).handle);
+  router.get('/:threadId', new GetThreadDetailHandler(container).handle);
+  router.post('/:threadId/comments', new PostCommentHandler(container).handle);
+  router.delete('/:threadId/comments/:commentId', new DeleteCommentHandler(container).handle);
+  router.post('/:threadId/comments/:commentId/replies', new PostReplyHandler(container).handle);
+  router.delete('/:threadId/comments/:commentId/replies/:replyId', new DeleteReplyHandler(container).handle);
 
   return router;
 };

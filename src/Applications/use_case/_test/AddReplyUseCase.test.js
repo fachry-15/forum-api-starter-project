@@ -17,7 +17,15 @@ describe('AddReplyUseCase', () => {
       owner: 'user-123',
     };
 
-    const mockAddedReply = new AddedReply({
+    // Nilai kembalian mock dibuat sebagai objek mentah yang berbeda dari expected value,
+    // sehingga kita bisa memastikan use case benar-benar memproses hasil dari dependensi.
+    const mockRepositoryResult = {
+      id: 'reply-123',
+      content: useCasePayload.content,
+      owner: useCasePayload.owner,
+    };
+
+    const expectedAddedReply = new AddedReply({
       id: 'reply-123',
       content: useCasePayload.content,
       owner: useCasePayload.owner,
@@ -29,7 +37,7 @@ describe('AddReplyUseCase', () => {
 
     mockThreadRepository.checkAvailabilityThread = vi.fn().mockResolvedValue(undefined);
     mockCommentRepository.checkAvailabilityComment = vi.fn().mockResolvedValue(undefined);
-    mockReplyRepository.addReply = vi.fn().mockResolvedValue(mockAddedReply);
+    mockReplyRepository.addReply = vi.fn().mockResolvedValue(mockRepositoryResult);
 
     const addReplyUseCase = new AddReplyUseCase({
       replyRepository: mockReplyRepository,
@@ -41,7 +49,7 @@ describe('AddReplyUseCase', () => {
     const addedReply = await addReplyUseCase.execute(useCasePayload);
 
     // Assert
-    expect(addedReply).toStrictEqual(mockAddedReply);
+    expect(addedReply).toStrictEqual(expectedAddedReply);
     expect(mockThreadRepository.checkAvailabilityThread).toHaveBeenCalledWith(useCasePayload.threadId);
     expect(mockCommentRepository.checkAvailabilityComment).toHaveBeenCalledWith(useCasePayload.commentId);
     expect(mockReplyRepository.addReply).toHaveBeenCalledWith(new NewReply({
@@ -74,6 +82,7 @@ describe('AddReplyUseCase', () => {
 
     // Action & Assert
     await expect(addReplyUseCase.execute(useCasePayload)).rejects.toThrow(NotFoundError);
+    expect(mockThreadRepository.checkAvailabilityThread).toHaveBeenCalledWith(useCasePayload.threadId);
   });
 
   it('should throw NotFoundError when comment does not exist', async () => {

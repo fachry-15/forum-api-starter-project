@@ -1,4 +1,5 @@
 import NewReply from '../../Domains/replies/entities/NewReply.js';
+import AddedReply from '../../Domains/replies/entities/AddedReply.js';
 
 class AddReplyUseCase {
   constructor({ replyRepository, commentRepository, threadRepository }) {
@@ -14,7 +15,8 @@ class AddReplyUseCase {
     await this._commentRepository.checkAvailabilityComment(commentId);
 
     const newReply = new NewReply(useCasePayload);
-    return this._replyRepository.addReply(newReply);
+    const addedReply = await this._replyRepository.addReply(newReply);
+    return new AddedReply(addedReply);
   }
 }
 
