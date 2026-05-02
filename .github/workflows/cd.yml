@@ -1,0 +1,36 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute deployment via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST_SERVER }}
+          username: ${{ secrets.USERNAME_SERVER }}
+          key: ${{ secrets.SSH_KEY_SERVER }}
+          script: |
+            # Pindah ke folder proyek di server Anda
+            # Sesuaikan nama foldernya jika berbeda
+            cd forum-api-starter-project
+            
+            # Tarik pembaruan terbaru dari GitHub
+            git pull origin main
+            
+            # Install dependency terbaru
+            npm install
+            
+            # Jalankan migrasi database jika ada
+            npm run migrate up
+            
+            # Restart aplikasi menggunakan PM2
+            # Sesuaikan 'forum-api' dengan nama aplikasi PM2 Anda
+            pm2 restart forum-api
