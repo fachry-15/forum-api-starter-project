@@ -4,6 +4,7 @@ import DeleteCommentUseCase from '../../../../Applications/use_case/DeleteCommen
 import GetThreadDetailUseCase from '../../../../Applications/use_case/GetThreadDetailUseCase.js';
 import AddReplyUseCase from '../../../../Applications/use_case/AddReplyUseCase.js';
 import DeleteReplyUseCase from '../../../../Applications/use_case/DeleteReplyUseCase.js';
+import LikeCommentUseCase from '../../../../Applications/use_case/LikeCommentUseCase.js';
 import AuthenticationError from '../../../../Commons/exceptions/AuthenticationError.js';
 
 class PostThreadHandler {
@@ -209,6 +210,37 @@ class DeleteReplyHandler {
   }
 }
 
+class PutLikeCommentHandler {
+  constructor(container) {
+    this._container = container;
+    this.handle = this.handle.bind(this);
+  }
+
+  async handle(req, res, next) {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        throw new AuthenticationError('Missing authentication');
+      }
+
+      const token = authHeader.split(' ')[1];
+      const tokenManager = this._container.getInstance('AuthenticationTokenManager');
+      await tokenManager.verifyAccessToken(token);
+
+      const payload = await tokenManager.decodePayload(token);
+      const owner = payload.id;
+      const { threadId, commentId } = req.params;
+
+      const likeCommentUseCase = this._container.getInstance(LikeCommentUseCase.name);
+      await likeCommentUseCase.execute({ threadId, commentId, owner });
+
+      return res.status(200).json({ status: 'success' });
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+
 export {
   PostThreadHandler,
   PostCommentHandler,
@@ -216,4 +248,5 @@ export {
   GetThreadDetailHandler,
   PostReplyHandler,
   DeleteReplyHandler,
+  PutLikeCommentHandler,
 };

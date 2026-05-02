@@ -25,12 +25,13 @@ class GetThreadDetailUseCase {
       return acc;
     }, {});
 
-    const mappedComments = comments.map(({ id, username, date, content, is_delete }) => ({
+    const mappedComments = comments.map(({ id, username, date, content, is_delete, likeCount }) => ({
       id,
       username,
       date,
       replies: repliesByCommentId[id] || [],
       content: is_delete ? '**komentar telah dihapus**' : content,
+      likeCount: likeCount ?? 0,
     }));
 
     return {

@@ -6,6 +6,7 @@ import {
   GetThreadDetailHandler,
   PostReplyHandler,
   DeleteReplyHandler,
+  PutLikeCommentHandler,
 } from './handler.js';
 
 const routes = (container) => {
@@ -17,6 +18,7 @@ const routes = (container) => {
   router.delete('/:threadId/comments/:commentId', new DeleteCommentHandler(container).handle);
   router.post('/:threadId/comments/:commentId/replies', new PostReplyHandler(container).handle);
   router.delete('/:threadId/comments/:commentId/replies/:replyId', new DeleteReplyHandler(container).handle);
+  router.put('/:threadId/comments/:commentId/likes', new PutLikeCommentHandler(container).handle);
 
   return router;
 };

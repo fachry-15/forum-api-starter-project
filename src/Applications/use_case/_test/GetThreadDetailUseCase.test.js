@@ -25,6 +25,7 @@ describe('GetThreadDetailUseCase', () => {
         date: '2021-08-08T07:22:33.555Z',
         content: 'sebuah comment',
         is_delete: false,
+        likeCount: 2,
       },
       {
         id: 'comment-2',
@@ -32,6 +33,7 @@ describe('GetThreadDetailUseCase', () => {
         date: '2021-08-08T07:26:21.338Z',
         content: 'komentar yang dihapus',
         is_delete: true,
+        likeCount: 0,
       },
     ];
 
@@ -102,6 +104,7 @@ describe('GetThreadDetailUseCase', () => {
             },
           ],
           content: 'sebuah comment',
+          likeCount: 2,
         },
         {
           id: 'comment-2',
@@ -109,6 +112,7 @@ describe('GetThreadDetailUseCase', () => {
           date: '2021-08-08T07:26:21.338Z',
           replies: [],
           content: '**komentar telah dihapus**',
+          likeCount: 0,
         },
       ],
     });
