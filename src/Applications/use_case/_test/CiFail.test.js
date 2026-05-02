@@ -1,5 +1,5 @@
-describe('Skenario CI Gagal', () => {
-  it('seharusnya gagal (1 + 1 = 3)', () => {
-    expect(1 + 1).toEqual(3);
+describe('Skenario CI Berhasil', () => {
+  it('seharusnya berhasil (1 + 1 = 2)', () => {
+    expect(1 + 1).toEqual(2);
   });
 });
